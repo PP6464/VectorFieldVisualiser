@@ -1,0 +1,48 @@
+﻿# Rider
+.idea
+
+# Build artifacts
+*.obj
+*.exe
+*.lib
+*.pdb
+*.dll
+*.exp
+*.ilk
+*.idb
+*.tlog
+*.log
+*.pch
+*.sdf
+*.ipch
+*.iobj
+*.ipdb
+
+# Shader binaries
+*.cso
+*.pso
+
+# VS folders
+.vs/
+*.VC.db
+*.VC.VC.opendb
+
+# User-specific files
+*.user
+*.suo
+*.sln.docstates
+
+# Intermediate directories
+x64/
+x86/
+Debug/
+Release/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# vcpkg
+vcpkg_installed/
