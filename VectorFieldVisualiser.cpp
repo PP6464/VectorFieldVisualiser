@@ -470,17 +470,17 @@ namespace
 		constexpr UINT offset = 0;
 
 		// Render the axes
-		context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 		context->IASetVertexBuffers(0, 1, &axes_vertex_buffer, &stride, &offset);
 		context->Draw(axes.size(), 0);
 
 		// Render the axes ticks
-		context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 		context->IASetVertexBuffers(0, 1, &axes_ticks_buffer, &stride, &offset);
 		context->Draw(axes_ticks.size(), 0);
 
 		// Render the axes' arrows
-		context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetVertexBuffers(0, 1, &axes_arrows_buffer, &stride, &offset);
 		context->IASetIndexBuffer(axes_arrows_index_buffer, DXGI_FORMAT_R32_UINT, 0);
 		context->DrawIndexed(axes_arrows_indices.size(), 0, 0);
