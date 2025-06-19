@@ -28,15 +28,44 @@ namespace
 	UINT height = 600;
 	int axes_size = 3;
 
-	bool is_rotating = false;
 	float rotation_speed = 1.0f;
-	POINT last_mouse_pos;
 
 	// Rendering variables
 	struct vertex
 	{
 		DirectX::XMFLOAT3 pos;
 		DirectX::XMFLOAT4 col;
+	};
+
+	struct camera
+	{
+		DirectX::XMVECTOR pos;
+		DirectX::XMVECTOR target;
+		DirectX::XMVECTOR up;
+
+		DirectX::XMMATRIX get_view_matrix() const
+		{
+			return DirectX::XMMatrixLookAtLH(pos, target, up);
+		}
+
+		void yaw(const float dx)
+		{
+			const DirectX::XMVECTOR dist = DirectX::XMVector3Length(DirectX::XMVectorSubtract(target, pos));
+			const DirectX::XMVECTOR right = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos))));
+			pos = DirectX::XMVectorScale(DirectX::XMVector3Normalize(DirectX::XMVectorAdd(pos, DirectX::XMVectorScale(right, dx))), dist.m128_f32[0]);
+			const DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos));
+			up = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(
+				DirectX::XMVectorScale(DirectX::XMVectorSubtract(pos, target), DirectX::XMVectorSubtract(pos, target).m128_f32[0]),
+				{ 0.0, DirectX::XMVector3Length(DirectX::XMVectorSubtract(pos, target)).m128_f32[0], 0.0 }
+			));
+		}
+	};
+
+	camera cam
+	{
+		{ 0.0, 1.0, 10.0, 1.0 },
+		{ 0.0, 0.0, 0.0, 1.0 },
+		DirectX::XMVector3Normalize({ 0.0, 10.0, 1.0, 0.0 }),
 	};
 
 	DirectX::XMMATRIX init_world_orientation = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(-150)) * DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(15));
@@ -49,7 +78,7 @@ namespace
 	DirectX::XMMATRIX init_view = DirectX::XMMatrixLookAtLH(
 		{ 0.0, 1.0, 10.0,  1.0 },
 		{ 0.0, 0.0, 0.0, 1.0 },
-		{ 0.0, 1.0, 0.0, 0.0 }
+		DirectX::XMVector3Normalize({ 0.0, 10.0, 1.0, 0.0 })
 	);
 	DirectX::XMMATRIX init_world = switch_y_z * init_world_orientation;
 	DirectX::XMMATRIX init_projection = DirectX::XMMatrixPerspectiveFovLH(
@@ -58,7 +87,7 @@ namespace
 		0.1f, 100.0f
 	);
 
-	DirectX::XMMATRIX wvp = init_world * init_view * init_projection;
+	DirectX::XMMATRIX wvp = init_world * cam.get_view_matrix() * init_projection;
 
 	struct cb_data
 	{
@@ -132,23 +161,21 @@ namespace
 		case WM_DESTROY:
 			PostQuitMessage(0); // Tells the app to quit
 			return 0;
-		case WM_LBUTTONDOWN:
-			is_rotating = true;
-			GetCursorPos(&last_mouse_pos);
-			return 0;
-		case WM_LBUTTONUP:
-			is_rotating = false;
-			return 0;
-		case WM_MOUSEMOVE:
-			if (is_rotating)
+		case WM_KEYDOWN:
+			switch (w_param)
 			{
-				POINT mouse_pos;
-				GetCursorPos(&mouse_pos);
-				const int dx = mouse_pos.x - last_mouse_pos.x;
-				const int dy = mouse_pos.y - last_mouse_pos.y;
-				last_mouse_pos = mouse_pos;
-
-				// cam.rotate(static_cast<float>(dx), static_cast<float>(dy));
+				case VK_ESCAPE:
+					PostQuitMessage(0);
+					return 0;
+				case VK_LEFT:
+					std::cout << "Left" << std::endl ;
+					cam.yaw(-0.01f);
+					return 0;
+				case VK_RIGHT:
+					std::cout << "Right" << std::endl;
+					cam.yaw(0.01f);
+					return 0;
+				default: break;
 			}
 		default: break;
 		}
@@ -427,11 +454,11 @@ namespace
 
 		// "Recalculate"	the WVP matrix - currently no need to change it
 		const DirectX::XMMATRIX world = init_world;
-		const DirectX::XMMATRIX view = init_view;
+		const DirectX::XMMATRIX view = cam.get_view_matrix();
 		const DirectX::XMMATRIX projection = init_projection;
 		const DirectX::XMMATRIX wvp = world * view * projection;
-		const cb_data cb = {DirectX::XMMatrixTranspose(wvp)}; // Transpose the matrix for the shader
-		context->UpdateSubresource(cb_buffer, 0, nullptr, &cb, 0, 0);
+		const cb_data new_cb = {DirectX::XMMatrixTranspose(wvp)}; // Transpose the matrix for the shader
+		context->UpdateSubresource(cb_buffer, 0, nullptr, &new_cb, 0, 0);
 
 		// Configure shaders for rendering
 		context->VSSetShader(vertex_shader, nullptr, 0);

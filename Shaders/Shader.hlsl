@@ -20,7 +20,6 @@ vertex_out vs_main(vertex_in input)
 	vertex_out output;
 	output.pos = mul(wvp, float4(input.pos, 1.0f));
 	output.col = input.col;
-	// output.col = float4(0.0f, 1.0f, 0.0f, 1.0f);
 	return output;
 }
 
