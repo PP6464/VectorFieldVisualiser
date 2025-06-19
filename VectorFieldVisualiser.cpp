@@ -4,6 +4,9 @@
 // ReSharper disable CppDeclaratorNeverUsed
 #include <windows.h>
 #include <windowsx.h>
+
+// ReSharper disable once CppInconsistentNaming
+# define _USE_MATH_DEFINES  // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // DirectX 11
 #include <dxgi1_6.h>
 #include <d3d11.h>
@@ -51,24 +54,58 @@ namespace
 		void yaw(const float dx)
 		{
 			const DirectX::XMVECTOR dist = DirectX::XMVector3Length(DirectX::XMVectorSubtract(target, pos));
-			const DirectX::XMVECTOR right = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(up, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos))));
-			pos = DirectX::XMVectorScale(DirectX::XMVector3Normalize(DirectX::XMVectorAdd(pos, DirectX::XMVectorScale(right, dx))), dist.m128_f32[0]);
+			const DirectX::XMVECTOR right = DirectX::XMVector3Normalize(
+				DirectX::XMVector3Cross(up, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos))));
+			pos = DirectX::XMVectorScale(
+				DirectX::XMVector3Normalize(DirectX::XMVectorAdd(pos, DirectX::XMVectorScale(right, dx))),
+				DirectX::XMVectorGetX(dist));
 			const DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos));
 			up = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(
-				DirectX::XMVectorScale(DirectX::XMVectorSubtract(pos, target), DirectX::XMVectorSubtract(pos, target).m128_f32[0]),
-				{ 0.0, DirectX::XMVector3Length(DirectX::XMVectorSubtract(pos, target)).m128_f32[0], 0.0 }
+				DirectX::XMVectorScale(DirectX::XMVectorSubtract(pos, target),
+				                       DirectX::XMVectorGetY(DirectX::XMVectorSubtract(pos, target))),
+				{
+					0.0f, std::pow(DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(pos, target))), 2.0f),
+					0.0f
+				}
 			));
+		}
+
+		void pitch(const float dy)
+		{
+			const DirectX::XMVECTOR dist = DirectX::XMVector3Length(DirectX::XMVectorSubtract(target, pos));
+			const DirectX::XMVECTOR right = DirectX::XMVector3Normalize(
+				DirectX::XMVector3Cross(up, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos))));
+			pos = DirectX::XMVectorScale(
+				DirectX::XMVector3Normalize(DirectX::XMVectorAdd(pos, DirectX::XMVectorScale(up, dy))),
+				DirectX::XMVectorGetX(dist));
+			const DirectX::XMVECTOR direction = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(target, pos));
+			up = DirectX::XMVector3Cross(right, direction);
 		}
 	};
 
+	std::vector<vertex> arrows;
+
+	DirectX::XMFLOAT3 vector_field(const DirectX::XMFLOAT3 pos)
+	{
+		const float x = pos.x;
+		const float y = pos.y;
+		const float z = pos.z;
+		return {
+			(-10 * y + std::sin(z)) / (x * x + y * y + 1),
+			(10 * x + std::cos(z)) / (x * x + y * y + 1),
+			-5 * std::sin((z + 0.1f * x * y + 0.25f) * static_cast<float>(M_PI))
+		};
+	}
+
 	camera cam
 	{
-		{ 0.0, 1.0, 10.0, 1.0 },
-		{ 0.0, 0.0, 0.0, 1.0 },
-		DirectX::XMVector3Normalize({ 0.0, 10.0, 1.0, 0.0 }),
+		{0.0, 1.0, 10.0, 1.0},
+		{0.0, 0.0, 0.0, 1.0},
+		DirectX::XMVector3Normalize({0.0, 10.0, 1.0, 0.0}),
 	};
 
-	DirectX::XMMATRIX init_world_orientation = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(-150)) * DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(15));
+	DirectX::XMMATRIX init_world_orientation = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(-150)) *
+		DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(15));
 	DirectX::XMMATRIX switch_y_z = {
 		1.0, 0.0, 0.0, 0.0,
 		0.0, 0.0, 1.0, 0.0,
@@ -76,9 +113,9 @@ namespace
 		0.0, 0.0, 0.0, 1.0
 	};
 	DirectX::XMMATRIX init_view = DirectX::XMMatrixLookAtLH(
-		{ 0.0, 1.0, 10.0,  1.0 },
-		{ 0.0, 0.0, 0.0, 1.0 },
-		DirectX::XMVector3Normalize({ 0.0, 10.0, 1.0, 0.0 })
+		{0.0, 1.0, 10.0, 1.0},
+		{0.0, 0.0, 0.0, 1.0},
+		DirectX::XMVector3Normalize({0.0, 10.0, 1.0, 0.0})
 	);
 	DirectX::XMMATRIX init_world = switch_y_z * init_world_orientation;
 	DirectX::XMMATRIX init_projection = DirectX::XMMatrixPerspectiveFovLH(
@@ -113,17 +150,17 @@ namespace
 	std::vector<vertex> axes_ticks = {};
 	std::vector<vertex> axes_arrows = {
 		// x-axis
-		{ { static_cast<float>(axes_size) + 0.5f, 0.0, 0.0 }, { 1.0, 0.0, 0.0, 1.0 }},
-		{ { static_cast<float>(axes_size) + 0.25f, -0.25, 0.0 }, { 1.0, 0.0, 0.0, 1.0 }},
-		{ { static_cast<float>(axes_size) + 0.25f, 0.25, 0.0 }, { 1.0, 0.0, 0.0, 1.0 }},
+		{{static_cast<float>(axes_size) + 0.5f, 0.0, 0.0}, {1.0, 0.0, 0.0, 1.0}},
+		{{static_cast<float>(axes_size) + 0.25f, -0.25, 0.0}, {1.0, 0.0, 0.0, 1.0}},
+		{{static_cast<float>(axes_size) + 0.25f, 0.25, 0.0}, {1.0, 0.0, 0.0, 1.0}},
 		// y-axis
-		{ { 0.0, static_cast<float>(axes_size) + 0.5f, 0.0 }, { 0.0, 1.0, 0.0, 1.0 }},
-		{ { -0.25, static_cast<float>(axes_size) + 0.25f, 0.0 }, { 0.0, 1.0, 0.0, 1.0 }},
-		{ { 0.25, static_cast<float>(axes_size) + 0.25f, 0.0 }, { 0.0, 1.0, 0.0, 1.0 }},
+		{{0.0, static_cast<float>(axes_size) + 0.5f, 0.0}, {0.0, 1.0, 0.0, 1.0}},
+		{{-0.25, static_cast<float>(axes_size) + 0.25f, 0.0}, {0.0, 1.0, 0.0, 1.0}},
+		{{0.25, static_cast<float>(axes_size) + 0.25f, 0.0}, {0.0, 1.0, 0.0, 1.0}},
 		// z-axis
-		{ { 0.0, 0.0, static_cast<float>(axes_size) + 0.5f }, { 0.0, 0.0, 1.0, 1.0 }},
-		{ { -0.25, 0.0, static_cast<float>(axes_size) + 0.25f }, { 0.0, 0.0, 1.0, 1.0 }},
-		{ { 0.25, 0.0, static_cast<float>(axes_size) + 0.25f }, { 0.0, 0.0, 1.0, 1.0 }},
+		{{0.0, 0.0, static_cast<float>(axes_size) + 0.5f}, {0.0, 0.0, 1.0, 1.0}},
+		{{-0.25, 0.0, static_cast<float>(axes_size) + 0.25f}, {0.0, 0.0, 1.0, 1.0}},
+		{{0.25, 0.0, static_cast<float>(axes_size) + 0.25f}, {0.0, 0.0, 1.0, 1.0}},
 	};
 	std::vector<UINT> axes_arrows_indices = {
 		// x-axis
@@ -140,6 +177,7 @@ namespace
 	ID3D11Buffer* axes_arrows_buffer; // A buffer for axes arrows data
 	ID3D11Buffer* axes_arrows_index_buffer; // A buffer for axes arrows index data
 	ID3D11Buffer* cb_buffer; // A buffer for constant data
+	ID3D11Buffer* arrows_vertex_buffer; // A buffer for arrow vertex data
 
 	ID3D11VertexShader* vertex_shader; // A vertex shader
 	ID3D11PixelShader* pixel_shader; // A pixel shader
@@ -164,18 +202,26 @@ namespace
 		case WM_KEYDOWN:
 			switch (w_param)
 			{
-				case VK_ESCAPE:
-					PostQuitMessage(0);
-					return 0;
-				case VK_LEFT:
-					std::cout << "Left" << std::endl ;
-					cam.yaw(-0.01f);
-					return 0;
-				case VK_RIGHT:
-					std::cout << "Right" << std::endl;
-					cam.yaw(0.01f);
-					return 0;
-				default: break;
+			case VK_ESCAPE:
+				PostQuitMessage(0);
+				return 0;
+			case VK_LEFT:
+				std::cout << "Left" << std::endl;
+				cam.yaw(-0.1f);
+				return 0;
+			case VK_RIGHT:
+				std::cout << "Right" << std::endl;
+				cam.yaw(0.1f);
+				return 0;
+			case VK_UP:
+				std::cout << "Up" << std::endl;
+				cam.pitch(0.1f);
+				return 0;
+			case VK_DOWN:
+				std::cout << "Down" << std::endl;
+				cam.pitch(-0.1f);
+				return 0;
+			default: break;
 			}
 		default: break;
 		}
@@ -254,7 +300,7 @@ namespace
 		dvd.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		dvd.SampleDesc.Count = 1;
 		dvd.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		
+
 		// Axes vertex buffer configuration
 		D3D11_BUFFER_DESC axes_vertex_buffer_desc = {};
 		axes_vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
@@ -268,14 +314,14 @@ namespace
 		for (int i = -axes_size; i <= axes_size; ++i)
 		{
 			// x-axis tick
-			axes_ticks.emplace_back(vertex {{static_cast<float>(i), -0.25, 0.0}, { 1.0, 0.0, 0.0, 1.0 }});
-			axes_ticks.emplace_back(vertex {{static_cast<float>(i), 0.25, 0.0}, { 1.0, 0.0, 0.0, 1.0 }});
+			axes_ticks.emplace_back(vertex{{static_cast<float>(i), -0.25, 0.0}, {1.0, 0.0, 0.0, 1.0}});
+			axes_ticks.emplace_back(vertex{{static_cast<float>(i), 0.25, 0.0}, {1.0, 0.0, 0.0, 1.0}});
 			// y-axis tick
-			axes_ticks.emplace_back(vertex {{-0.25, static_cast<float>(i), 0.0}, { 0.0, 1.0, 0.0, 1.0 }});
-			axes_ticks.emplace_back(vertex {{0.25, static_cast<float>(i), 0.0}, { 0.0, 1.0, 0.0, 1.0 }});
+			axes_ticks.emplace_back(vertex{{-0.25, static_cast<float>(i), 0.0}, {0.0, 1.0, 0.0, 1.0}});
+			axes_ticks.emplace_back(vertex{{0.25, static_cast<float>(i), 0.0}, {0.0, 1.0, 0.0, 1.0}});
 			// z-axis tick
-			axes_ticks.emplace_back(vertex {{-0.25, 0.0, static_cast<float>(i)}, { 0.0, 0.0, 1.0, 1.0 }});
-			axes_ticks.emplace_back(vertex {{0.25, 0.0, static_cast<float>(i)}, { 0.0, 0.0, 1.0, 1.0 }});
+			axes_ticks.emplace_back(vertex{{-0.25, 0.0, static_cast<float>(i)}, {0.0, 0.0, 1.0, 1.0}});
+			axes_ticks.emplace_back(vertex{{0.25, 0.0, static_cast<float>(i)}, {0.0, 0.0, 1.0, 1.0}});
 		}
 		D3D11_BUFFER_DESC axes_ticks_buffer_desc = {};
 		axes_ticks_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
@@ -315,6 +361,43 @@ namespace
 		init_cb_data.pSysMem = &cb;
 		init_cb_data.SysMemPitch = 0;
 		init_cb_data.SysMemSlicePitch = 0;
+
+		// Fill in the vector field
+		arrows.reserve(pow(axes_size * 2 + 1, 3));
+		for (int x = -axes_size; x <= axes_size; ++x)
+		{
+			for (int y = -axes_size; y <= axes_size; ++y)
+			{
+				for (int z = -axes_size; z <= axes_size; ++z)
+				{
+					const DirectX::XMFLOAT3 pos = {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)};
+					const DirectX::XMFLOAT3 vec = vector_field(pos);
+					const double mag = DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(DirectX::XMLoadFloat3(&vec)));
+					DirectX::XMFLOAT3 end;
+					DirectX::XMStoreFloat3(&end, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&pos),
+					                                                  DirectX::XMVectorScale(
+						                                                  DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&vec)),
+						                                                  0.5f)));
+					DirectX::XMFLOAT4 color;
+					DirectX::XMStoreFloat4(&color, DirectX::XMVectorSet(
+						                       static_cast<float>(std::tanh(mag)),
+						                       static_cast<float>(1 - pow(std::tanh(0.5f * mag - 1.5f), 2.0f)),
+						                       static_cast<float>(1 - std::tanh(mag)),
+						                       1.0f
+					                       ));
+					arrows.emplace_back(vertex{pos, color});
+					arrows.emplace_back(vertex{end, color});
+				}
+			}
+		}
+		// Configure the arrows_vertex_buffer
+		D3D11_BUFFER_DESC arrows_vertex_buffer_desc = {};
+		arrows_vertex_buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+		arrows_vertex_buffer_desc.ByteWidth = sizeof(vertex) * arrows.size();
+		arrows_vertex_buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		arrows_vertex_buffer_desc.CPUAccessFlags = 0;
+		D3D11_SUBRESOURCE_DATA init_arrows_vertex_data = {};
+		init_arrows_vertex_data.pSysMem = arrows.data();
 
 		// TEMPORARY: Disable culling
 		D3D11_RASTERIZER_DESC rasterizer_desc = {};
@@ -356,7 +439,7 @@ namespace
 		}
 
 		device->CreateRasterizerState(&rasterizer_desc, &rasterizer_state);
-		
+
 		// Create the axes vertex buffer
 		device->CreateBuffer(&axes_vertex_buffer_desc, &init_axes_vertex_data, &axes_vertex_buffer);
 		// Create the axes ticks buffer
@@ -365,6 +448,8 @@ namespace
 		device->CreateBuffer(&axes_arrows_buffer_desc, &init_axes_arrows_data, &axes_arrows_buffer);
 		// Create the axes' arrows index buffer
 		device->CreateBuffer(&axes_arrows_index_buffer_desc, &init_axes_arrows_index_data, &axes_arrows_index_buffer);
+		// Create arrows vertex buffer
+		device->CreateBuffer(&arrows_vertex_buffer_desc, &init_arrows_vertex_data, &arrows_vertex_buffer);
 		// Create the constant buffer
 		device->CreateBuffer(&constant_buffer_desc, &init_cb_data, &cb_buffer);
 
@@ -411,7 +496,10 @@ namespace
 		// Create the input layout
 		D3D11_INPUT_ELEMENT_DESC layout[] = {
 			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-			{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12 /*D3D11_APPEND_ALIGNED_ELEMENT*/, D3D11_INPUT_PER_VERTEX_DATA, 0},
+			{
+				"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12 /*D3D11_APPEND_ALIGNED_ELEMENT*/, D3D11_INPUT_PER_VERTEX_DATA,
+				0
+			},
 		};
 		UINT num_elements = ARRAYSIZE(layout);
 		device->CreateInputLayout(
@@ -479,12 +567,17 @@ namespace
 		context->IASetVertexBuffers(0, 1, &axes_ticks_buffer, &stride, &offset);
 		context->Draw(axes_ticks.size(), 0);
 
+		// Render field arrows
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+		context->IASetVertexBuffers(0, 1, &arrows_vertex_buffer, &stride, &offset);
+		context->Draw(arrows.size(), 0);
+
 		// Render the axes' arrows
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->IASetVertexBuffers(0, 1, &axes_arrows_buffer, &stride, &offset);
 		context->IASetIndexBuffer(axes_arrows_index_buffer, DXGI_FORMAT_R32_UINT, 0);
 		context->DrawIndexed(axes_arrows_indices.size(), 0, 0);
-		
+
 		swap_chain->Present(1, 0);
 	}
 
@@ -503,6 +596,7 @@ namespace
 		if (rasterizer_state != nullptr) rasterizer_state->Release();
 		if (axes_arrows_buffer != nullptr) axes_arrows_buffer->Release();
 		if (axes_vertex_buffer != nullptr) axes_vertex_buffer->Release();
+		if (axes_arrows_index_buffer != nullptr) axes_arrows_index_buffer->Release();
 		if (window_handle != nullptr) DestroyWindow(window_handle);
 	}
 }
