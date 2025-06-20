@@ -29,7 +29,9 @@ namespace
 	HWND window_handle;
 	UINT width = 800;
 	UINT height = 600;
-	int axes_size = 3;
+	int axes_size = 5;
+	int stride = 2;
+	float arrow_length = 0.5f;
 
 	float rotation_speed = 1.0f;
 
@@ -99,9 +101,9 @@ namespace
 
 	camera cam
 	{
-		{0.0, 1.0, 10.0, 1.0},
+		{0.0, 5.0, 25.0, 1.0},
 		{0.0, 0.0, 0.0, 1.0},
-		DirectX::XMVector3Normalize({0.0, 10.0, 1.0, 0.0}),
+		DirectX::XMVector3Normalize({0.0, 25.0, 5.0, 0.0}),
 	};
 
 	DirectX::XMMATRIX init_world_orientation = DirectX::XMMatrixRotationY(DirectX::XMConvertToRadians(-150)) *
@@ -112,11 +114,11 @@ namespace
 		0.0, 1.0, 0.0, 0.0,
 		0.0, 0.0, 0.0, 1.0
 	};
-	DirectX::XMMATRIX init_view = DirectX::XMMatrixLookAtLH(
-		{0.0, 1.0, 10.0, 1.0},
-		{0.0, 0.0, 0.0, 1.0},
-		DirectX::XMVector3Normalize({0.0, 10.0, 1.0, 0.0})
-	);
+	// DirectX::XMMATRIX init_view = DirectX::XMMatrixLookAtLH(
+	// 	{0.0, 1.0, 10.0, 1.0},
+	// 	{0.0, 0.0, 0.0, 1.0},
+	// 	DirectX::XMVector3Normalize({0.0, 10.0, 1.0, 0.0})
+	// );
 	DirectX::XMMATRIX init_world = switch_y_z * init_world_orientation;
 	DirectX::XMMATRIX init_projection = DirectX::XMMatrixPerspectiveFovLH(
 		DirectX::XM_PIDIV4,
@@ -311,7 +313,7 @@ namespace
 		init_axes_vertex_data.pSysMem = axes.data();
 
 		// Axes ticks buffer configuration
-		for (int i = -axes_size; i <= axes_size; ++i)
+		for (int i = -axes_size; i <= axes_size; i += stride)
 		{
 			// x-axis tick
 			axes_ticks.emplace_back(vertex{{static_cast<float>(i), -0.25, 0.0}, {1.0, 0.0, 0.0, 1.0}});
@@ -364,28 +366,72 @@ namespace
 
 		// Fill in the vector field
 		arrows.reserve(pow(axes_size * 2 + 1, 3));
-		for (int x = -axes_size; x <= axes_size; ++x)
+		for (int x = -axes_size; x <= axes_size; x += stride)
 		{
-			for (int y = -axes_size; y <= axes_size; ++y)
+			for (int y = -axes_size; y <= axes_size; y += stride)
 			{
-				for (int z = -axes_size; z <= axes_size; ++z)
+				for (int z = -axes_size; z <= axes_size; z += stride)
 				{
-					const DirectX::XMFLOAT3 pos = {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)};
-					const DirectX::XMFLOAT3 vec = vector_field(pos);
+					const DirectX::XMFLOAT3 start = {static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)};
+					const DirectX::XMFLOAT3 vec = vector_field(start);
 					const double mag = DirectX::XMVectorGetX(DirectX::XMVector3LengthSq(DirectX::XMLoadFloat3(&vec)));
 					DirectX::XMFLOAT3 end;
-					DirectX::XMStoreFloat3(&end, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&pos),
+					DirectX::XMStoreFloat3(&end, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&start),
 					                                                  DirectX::XMVectorScale(
 						                                                  DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&vec)),
-						                                                  0.5f)));
+						                                                  arrow_length)));
 					DirectX::XMFLOAT4 color;
-					DirectX::XMStoreFloat4(&color, DirectX::XMVectorSet(
-						                       static_cast<float>(std::tanh(mag)),
-						                       static_cast<float>(1 - pow(std::tanh(0.5f * mag - 1.5f), 2.0f)),
-						                       static_cast<float>(1 - std::tanh(mag)),
-						                       1.0f
-					                       ));
-					arrows.emplace_back(vertex{pos, color});
+					switch (static_cast<int>(std::floor(mag / 5)))
+					{
+					case 0:
+						color = {0.0, 0.0, 1.0, 1.0};
+						break;
+					case 1:
+						color = {0.0, 1.0, 1.0, 1.0};
+						break;
+					case 2:
+						color = {0.0, 1.0, 0.0, 1.0};
+						break;
+					case 3:
+						color = {1.0, 1.0, 0.0, 1.0};
+						break;
+					default:
+						color = {1.0, 0.0, 0.0, 1.0};
+						break;
+					}
+
+					const DirectX::XMVECTOR direction_vec = DirectX::XMVectorSubtract(DirectX::XMLoadFloat3(&end), DirectX::XMLoadFloat3(&start));
+
+					// Calculate the positions of the tips
+					DirectX::XMVECTOR start_vec = DirectX::XMLoadFloat3(&start);
+					DirectX::XMFLOAT3 tip1;
+					DirectX::XMFLOAT3 tip2;
+					if (DirectX::XMVectorGetX(DirectX::XMVector3Dot(
+						direction_vec,
+						{0.0, 0.0, 1.0})) == 0.0)
+					{
+						DirectX::XMVECTOR perp_vec = { 1.0, 0.0, 0.0 };
+						DirectX::XMVECTOR tip1_vec = DirectX::XMVectorAdd(DirectX::XMVectorAdd(start_vec, DirectX::XMVectorScale(direction_vec, arrow_length * 0.75f)), perp_vec);
+						DirectX::XMVECTOR tip2_vec = DirectX::XMVectorSubtract(DirectX::XMVectorAdd(start_vec, DirectX::XMVectorScale(direction_vec, arrow_length * 0.75f)), perp_vec);
+						DirectX::XMStoreFloat3(&tip1, tip1_vec);
+						DirectX::XMStoreFloat3(&tip2, tip2_vec);
+					} else
+					{
+						DirectX::XMVECTOR perp_vec = DirectX::XMVectorScale(DirectX::XMVector3Normalize({
+							DirectX::XMVectorGetY(direction_vec),
+							-DirectX::XMVectorGetX(direction_vec),
+							0.0
+						}), arrow_length * 0.25f);
+						DirectX::XMVECTOR tip1_vec = DirectX::XMVectorAdd(DirectX::XMVectorAdd(start_vec, DirectX::XMVectorScale(direction_vec, arrow_length * 0.75f)), perp_vec);
+						DirectX::XMVECTOR tip2_vec = DirectX::XMVectorSubtract(DirectX::XMVectorAdd(start_vec, DirectX::XMVectorScale(direction_vec, arrow_length * 0.75f)), perp_vec);
+						DirectX::XMStoreFloat3(&tip1, tip1_vec);
+						DirectX::XMStoreFloat3(&tip2, tip2_vec);
+					}
+					arrows.emplace_back(vertex{start, color});
+					arrows.emplace_back(vertex{end, color});
+					arrows.emplace_back(vertex{tip1, color});
+					arrows.emplace_back(vertex{end, color});
+					arrows.emplace_back(vertex{tip2, color});
 					arrows.emplace_back(vertex{end, color});
 				}
 			}
