@@ -35,6 +35,7 @@ namespace
     float arrow_length = 0.5f;
 
     float rotation_speed = 0.1f;
+    float pan_speed = 0.5f;
 
     // Rendering variables
     struct vertex
@@ -52,6 +53,22 @@ namespace
         DirectX::XMMATRIX get_view_matrix() const
         {
             return DirectX::XMMatrixLookAtLH(pos, target, up);
+        }
+
+        void pan(const float dx, const float dy, const float dz)
+        {
+            const DirectX::XMVECTOR forward = DirectX::XMVector3Normalize(
+                DirectX::XMVectorSubtract(target, pos));
+            const DirectX::XMVECTOR right = DirectX::XMVector3Normalize(
+                DirectX::XMVector3Cross(up, forward));
+            const DirectX::XMVECTOR world_up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+            const DirectX::XMVECTOR delta = DirectX::XMVectorAdd(
+                DirectX::XMVectorAdd(
+                    DirectX::XMVectorScale(right, dx),
+                    DirectX::XMVectorScale(world_up, dy)),
+                DirectX::XMVectorScale(forward, dz));
+            pos = DirectX::XMVectorAdd(pos, delta);
+            target = DirectX::XMVectorAdd(target, delta);
         }
 
         void yaw(const float dx)
@@ -214,6 +231,24 @@ namespace
                 return 0;
             case VK_DOWN:
                 cam.pitch(-rotation_speed);
+                return 0;
+            case 'A':
+                cam.pan(-pan_speed, 0.0f, 0.0f);
+                return 0;
+            case 'D':
+                cam.pan(pan_speed, 0.0f, 0.0f);
+                return 0;
+            case 'W':
+                cam.pan(0.0f, 0.0f, pan_speed);
+                return 0;
+            case 'S':
+                cam.pan(0.0f, 0.0f, -pan_speed);
+                return 0;
+            case 'R':
+                cam.pan(0.0f, pan_speed, 0.0f);
+                return 0;
+            case 'F':
+                cam.pan(0.0f, -pan_speed, 0.0f);
                 return 0;
             default: break;
             }
