@@ -9,6 +9,12 @@ This works on Windows only, as it uses DirectX. It can be run inside Visual Stud
 - `devenv VectorFieldVisualiser.sln /build` to build
 - `devenv VectorFieldVisualiser.sln /run` to run
 
+## Interacting with the visualizer
+The visualizer allows for rotation, panning and zooming. This can be achieved with the following bindings:
+- Arrows: Rotation
+- WASD: Panning
+- Mouse scroll: Zoom
+
 ## Example output
 
 !["See assets/example.png"](./assets/example.png)
