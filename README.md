@@ -2,6 +2,18 @@
 
 A DirectX application that lets you visualise a vector field (defined within the code).
 
+## Running the program
+
+This works on Windows only, as it uses DirectX. It can be run inside Visual Studio, or by running the following commands (you must have the Visual Studio Developer Command prompt installed):
+
+- `devenv VectorFieldVisualiser.sln /build` to build
+- `devenv VectorFieldVisualiser.sln /run` to run
+
+## Example output
+
+!["See assets/example.png"](./assets/example.png)
+
+
 ### Note on `shader_compiler.bat`
 
 This is a bat file to generate shader cso files, and when run will request the following:
