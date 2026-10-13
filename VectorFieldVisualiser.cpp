@@ -257,15 +257,9 @@ namespace
                 cam.pan(pan_speed, 0.0f, 0.0f);
                 return 0;
             case 'W':
-                cam.pan(0.0f, 0.0f, pan_speed);
-                return 0;
-            case 'S':
-                cam.pan(0.0f, 0.0f, -pan_speed);
-                return 0;
-            case 'R':
                 cam.pan(0.0f, pan_speed, 0.0f);
                 return 0;
-            case 'F':
+            case 'S':
                 cam.pan(0.0f, -pan_speed, 0.0f);
                 return 0;
             default: break;
