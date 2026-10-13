@@ -13,6 +13,7 @@
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -69,6 +70,18 @@ namespace
                 DirectX::XMVectorScale(forward, dz));
             pos = DirectX::XMVectorAdd(pos, delta);
             target = DirectX::XMVectorAdd(target, delta);
+        }
+
+        void zoom(const float scale)
+        {
+            const DirectX::XMVECTOR offset = DirectX::XMVectorSubtract(pos, target);
+            const float distance = DirectX::XMVectorGetX(DirectX::XMVector3Length(offset));
+            constexpr float min_distance = 0.5f;
+            constexpr float max_distance = 80.0f;
+            const float new_distance = (std::max)(min_distance, (std::min)(max_distance, distance * scale));
+            pos = DirectX::XMVectorAdd(
+                target,
+                DirectX::XMVectorScale(offset, new_distance / distance));
         }
 
         void yaw(const float dx)
@@ -213,6 +226,11 @@ namespace
         {
         case WM_DESTROY:
             PostQuitMessage(0); // Tells the app to quit
+            return 0;
+        case WM_MOUSEWHEEL:
+            cam.zoom(std::pow(
+                0.9f,
+                static_cast<float>(GET_WHEEL_DELTA_WPARAM(w_param)) / static_cast<float>(WHEEL_DELTA)));
             return 0;
         case WM_KEYDOWN:
             switch (w_param)
