@@ -2,6 +2,13 @@
 
 A DirectX application that lets you visualise a vector field (defined within the code).
 
+## Code organization
+
+Application startup and input coordination are in `src/Application.*`; Win32 window handling is in `src/Window.*`;
+camera controls are in `src/Camera.*`; CPU-side axes and vector-field geometry are built in `src/SceneGeometry.*`;
+and Direct3D resource management and frame rendering are in `src/Renderer.*`. The vector field itself is defined in
+`src/VectorField.cpp`, with the shared vertex layout in `src/Vertex.h`.
+
 ## Running the program
 
 This works on Windows only, as it uses DirectX. It can be run inside Visual Studio, or by running the following commands (you must have the Visual Studio Developer Command prompt installed):
