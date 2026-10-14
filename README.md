@@ -9,6 +9,10 @@ camera controls are in `src/Camera.*`; CPU-side axes and vector-field geometry a
 and Direct3D resource management and frame rendering are in `src/Renderer.*`. The vector field itself is defined in
 `src/VectorField.cpp`, with the shared vertex layout in `src/Vertex.h`.
 
+Feel free to edit the code in `src/VectorField.cpp` to render a different vector field,
+or change the arguments to `create_geometry()` (in `src/Application.cpp:19`) to configure the axes,
+e.g. to render with a range of ±10, or with ticks every 5 units.
+
 ## Running the program
 
 This works on Windows only, as it uses DirectX. It can be run inside Visual Studio, or by running the following commands (you must have the Visual Studio Developer Command prompt installed):
